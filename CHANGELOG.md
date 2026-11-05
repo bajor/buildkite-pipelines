@@ -5,6 +5,12 @@ first, in the form `## [X.Y.Z] - YYYY-MM-DD`. Merging it to `main` tags
 `vX.Y.Z` and publishes a GitHub release with that section as the notes.
 Consumers pin a tag in `.buildkite/pipeline.yml`.
 
+## [1.2.0] - 2026-11-05
+
+### Changed
+
+- `python-ml` sets `UV_LINK_MODE=copy`: the uv cache volume and the checkout are different filesystems, so uv copies packages directly instead of warning that hardlinking failed.
+
 ## [1.1.0] - 2026-11-05
 
 ### Fixed
