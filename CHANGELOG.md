@@ -5,6 +5,12 @@ first, in the form `## [X.Y.Z] - YYYY-MM-DD`. Merging it to `main` tags
 `vX.Y.Z` and publishes a GitHub release with that section as the notes.
 Consumers pin a tag in `.buildkite/pipeline.yml`.
 
+## [0.8.0] - 2026-11-05
+
+### Changed
+
+- `python-ml` steps are tuned for Buildkite hosted agents: a shared cache volume for uv packages and Pythons, a 15-minute timeout, and an automatic retry only when the agent is lost.
+
 ## [0.7.0] - 2026-11-05
 
 ### Added
