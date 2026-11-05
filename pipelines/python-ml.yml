@@ -19,3 +19,9 @@ steps:
     plugins:
       - "__PLUGIN__":
           check: python
+
+  - label: ":apple: Apple Silicon readiness"
+    key: apple-silicon
+    plugins:
+      - "__PLUGIN__":
+          check: apple-silicon

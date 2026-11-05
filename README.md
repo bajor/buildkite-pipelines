@@ -57,7 +57,7 @@ requires authentication even for public repositories.
 
 | Pipeline    | Steps                                   |
 |-------------|-----------------------------------------|
-| `python-ml` | `repo-hygiene`, `secrets`, `python` |
+| `python-ml` | `repo-hygiene`, `secrets`, `python`, `apple-silicon` |
 
 The steps have no dependencies on each other, so they run in parallel on
 separate agents.
@@ -69,6 +69,7 @@ separate agents.
 | `repo-hygiene` | The commit tracks a model or dataset file (`.safetensors`, `.gguf`, `.pt`, `.parquet`, and similar) or any file over 5 MiB. |
 | `secrets`      | Any commit in history contains a credential, such as a Hugging Face or cloud token. A secret deleted later still fails, because it stays readable in history and must be rotated. Uses gitleaks 8.30.1, downloaded from GitHub and checked against a pinned SHA-256. |
 | `python`       | In a repository with Python files: requires a uv project (tracked `pyproject.toml` and `uv.lock`, no `requirements*.txt`, `Pipfile`, `poetry.lock`, `pdm.lock`, `setup.py`, or `environment.yml`), then runs `uv sync --locked` (fails when `uv.lock` is out of date), then `ruff check`, `ruff format --check`, and `pytest` at the versions in the repository's `uv.lock`. The project must list `ruff` and `pytest` in its `dev` dependency group. Uses uv 0.13.1, checked against a pinned SHA-256. Passes without running anything when there are no Python files. |
+| `apple-silicon` | In a repository with Python files, the project is not ready for Apple Silicon (MLX, or PyTorch on MPS): `uv.lock` does not require macOS arm64 through `[tool.uv] required-environments`; the macOS arm64 lock contains a CUDA-only package (bitsandbytes, flash-attn, xformers, triton, deepspeed, vllm, unsloth, `nvidia-*`, ...); or code and configuration use an NVIDIA-only setting listed in `lib/apple-silicon-rules.tsv` (`cuda` devices, `torch.cuda`, `nccl`, `flash_attention_2`, bitsandbytes quantization and optimizers, fp16 mixed precision, multi-GPU accelerate modes). Each rule prints the Apple alternative; end a line with `# apple-silicon: allow` to accept it. On an Apple Silicon Mac it also fails when the project's Python runs under Rosetta or PyTorch/MLX cannot reach the GPU. |
 
 ## Add a check
 
