@@ -5,6 +5,12 @@ first, in the form `## [X.Y.Z] - YYYY-MM-DD`. Merging it to `main` tags
 `vX.Y.Z` and publishes a GitHub release with that section as the notes.
 Consumers pin a tag in `.buildkite/pipeline.yml`.
 
+## [0.6.0] - 2026-11-05
+
+### Added
+
+- `make-test` check: requires a `Makefile` with a `test` target and runs `make test`.
+
 ## [0.5.0] - 2026-11-05
 
 ### Added
