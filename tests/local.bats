@@ -37,6 +37,18 @@ setup() {
   [[ "$output" == *"entire-hook origin refs/heads/main abc"* ]]
 }
 
+@test "pre-push hook skips the local run on a branch without the command" {
+  hooks="$(git rev-parse --git-path hooks)"
+  printf '#!/bin/sh\necho previous-hook "$1"\n' > "$hooks/pre-push"
+  chmod +x "$hooks/pre-push"
+  "$PLUGIN_DIR/bin/install-pre-push-hook" scripts/ci-local.sh
+
+  run "$hooks/pre-push" origin < /dev/null
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"scripts/ci-local.sh is not on this branch"* ]]
+  [[ "$output" == *"previous-hook origin"* ]]
+}
+
 @test "refuses to overwrite an existing backup of the previous hook" {
   hooks="$(git rev-parse --git-path hooks)"
   printf '#!/bin/sh\n' > "$hooks/pre-push"

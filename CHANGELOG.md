@@ -5,6 +5,12 @@ first, in the form `## [X.Y.Z] - YYYY-MM-DD`. Merging it to `main` tags
 `vX.Y.Z` and publishes a GitHub release with that section as the notes.
 Consumers pin a tag in `.buildkite/pipeline.yml`.
 
+## [1.1.0] - 2026-11-05
+
+### Fixed
+
+- The pre-push hook from `bin/install-pre-push-hook` skips the local CI run, with a message, on a branch that does not contain the command, instead of blocking the push.
+
 ## [1.0.0] - 2026-11-05
 
 ### Added
