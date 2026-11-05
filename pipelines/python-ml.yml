@@ -1,0 +1,9 @@
+# Shared CI for Python machine learning repositories.
+# lib/upload-pipeline.sh replaces __PLUGIN__ with the uploading step's plugin
+# reference before upload, so every step runs the same plugin version.
+steps:
+  - label: ":broom: Repository hygiene"
+    key: repo-hygiene
+    plugins:
+      - "__PLUGIN__":
+          check: repo-hygiene
