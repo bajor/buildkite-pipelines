@@ -12,6 +12,9 @@
 env:
   UV_CACHE_DIR: /tmp/buildkite-cache/uv
   UV_PYTHON_INSTALL_DIR: /tmp/buildkite-cache/python
+  # The cache volume and the checkout are different filesystems, so uv
+  # cannot hardlink; copying directly avoids its fallback warning.
+  UV_LINK_MODE: copy
 
 cache:
   name: python-ml

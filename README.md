@@ -71,7 +71,7 @@ Each template sets, for every step:
 
 | Setting | Value | Why |
 |---------|-------|-----|
-| `cache` volume `python-ml` at `/tmp/buildkite-cache` | `UV_CACHE_DIR` and `UV_PYTHON_INSTALL_DIR` inside it | uv packages and Pythons persist between builds instead of downloading each time. Only jobs that exit 0 save changes; the cache is best-effort. |
+| `cache` volume `python-ml` at `/tmp/buildkite-cache` | `UV_CACHE_DIR` and `UV_PYTHON_INSTALL_DIR` inside it, `UV_LINK_MODE=copy` | uv packages and Pythons persist between builds instead of downloading each time. Only jobs that exit 0 save changes; the cache is best-effort. |
 | `timeout_in_minutes` | 15 | A hung job cannot run up agent minutes. |
 | `retry.automatic` | `exit_status: -1`, `limit: 2` | A job whose agent is lost is retried; check failures are not. |
 
