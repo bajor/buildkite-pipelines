@@ -192,6 +192,8 @@ consumer repository, with this plugin cloned at the pinned version:
 `install-pre-push-hook` keeps the repository's existing pre-push hook, such as
 Entire's, and runs it afterwards with the original arguments and stdin. A failing
 command stops the push; `git push --no-verify` skips the hook once.
+On a branch that does not contain the command, such as one created before the
+CI setup, the hook prints a message and the push continues.
 
 Consumer repositories wrap this in `scripts/ci-local.sh`, which reads the plugin
 version and pipeline name from `.buildkite/pipeline.yml` so local and remote CI

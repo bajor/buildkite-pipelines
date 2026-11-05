@@ -38,8 +38,14 @@ cat > "$hook" <<EOF
 #!/bin/sh
 $marker
 # Runs the CI checks locally; a failure stops the push. Skip once with
-# \`git push --no-verify\`.
-"\$(git rev-parse --show-toplevel)/$command" </dev/null || exit 1
+# \`git push --no-verify\`. Branches without the command (older than the CI
+# setup) push without the local run.
+ci="\$(git rev-parse --show-toplevel)/$command"
+if [ -x "\$ci" ]; then
+  "\$ci" </dev/null || exit 1
+else
+  echo "pre-push: $command is not on this branch; skipping the local CI run." >&2
+fi
 previous="\$0$previous_suffix"
 if [ -x "\$previous" ]; then exec "\$previous" "\$@"; fi
 EOF
