@@ -17,21 +17,33 @@ setup() {
   [[ "$output" == *"Failed: repo-hygiene"* ]]
 }
 
-@test "pre-push hook blocks a push when the command fails and chains to the previous hook" {
+@test "pre-push hook blocks a failing push and keeps an Entire-style hook chain working" {
   hooks="$(git rev-parse --git-path hooks)"
-  printf '#!/bin/sh\necho previous-hook "$1"\n' > "$hooks/pre-push"
-  chmod +x "$hooks/pre-push"
+  # Same shape as Entire's hooks: pre-push execs "$0.pre-entire-brain".
+  printf '#!/bin/sh\necho brain-hook\nexec "$0.pre-entire-brain" "$@"\n' > "$hooks/pre-push"
+  printf '#!/bin/sh\necho entire-hook "$1" "$(cat)"\n' > "$hooks/pre-push.pre-entire-brain"
+  chmod +x "$hooks/pre-push" "$hooks/pre-push.pre-entire-brain"
   printf '#!/bin/sh\nexit "${CI_RESULT:?}"\n' > ci.sh
   chmod +x ci.sh
   "$PLUGIN_DIR/bin/install-pre-push-hook" ci.sh
 
-  CI_RESULT=1 run "$hooks/pre-push" origin
+  CI_RESULT=1 run "$hooks/pre-push" origin < /dev/null
   [ "$status" -eq 1 ]
-  [[ "$output" != *"previous-hook"* ]]
+  [[ "$output" != *"brain-hook"* ]]
 
-  CI_RESULT=0 run "$hooks/pre-push" origin
+  CI_RESULT=0 run "$hooks/pre-push" origin <<< "refs/heads/main abc"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"previous-hook origin"* ]]
+  [[ "$output" == *"brain-hook"* ]]
+  [[ "$output" == *"entire-hook origin refs/heads/main abc"* ]]
+}
+
+@test "refuses to overwrite an existing backup of the previous hook" {
+  hooks="$(git rev-parse --git-path hooks)"
+  printf '#!/bin/sh\n' > "$hooks/pre-push"
+  printf '#!/bin/sh\n' > "$hooks/pre-push.pre-local-ci"
+  run "$PLUGIN_DIR/bin/install-pre-push-hook" ci.sh
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"already exists"* ]]
 }
 
 @test "installing the pre-push hook twice keeps a single chain" {

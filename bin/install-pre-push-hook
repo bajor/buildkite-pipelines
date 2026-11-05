@@ -15,6 +15,21 @@ if grep -qF "$marker" "$hook" 2>/dev/null; then
   echo "pre-push hook already installed: $hook"
   exit 0
 fi
+for file in "$hook$previous_suffix"*; do
+  if [[ -e "$file" ]]; then
+    echo "install-pre-push-hook: $file already exists; not overwriting it" >&2
+    exit 1
+  fi
+done
+
+# Chained hooks find the next hook at "$0.<suffix>", for example Entire's
+# "$0.pre-entire-brain". Renaming every pre-push.* file together with pre-push
+# keeps those paths valid after pre-push becomes pre-push.pre-local-ci.
+for file in "$hook".*; do
+  if [[ -e "$file" && "$file" != "$hook.sample" ]]; then
+    mv "$file" "$hook$previous_suffix${file#"$hook"}"
+  fi
+done
 if [[ -f "$hook" ]]; then
   mv "$hook" "$hook$previous_suffix"
 fi
