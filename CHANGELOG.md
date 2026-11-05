@@ -5,6 +5,16 @@ first, in the form `## [X.Y.Z] - YYYY-MM-DD`. Merging it to `main` tags
 `vX.Y.Z` and publishes a GitHub release with that section as the notes.
 Consumers pin a tag in `.buildkite/pipeline.yml`.
 
+## [1.3.0] - 2026-11-05
+
+### Fixed
+
+- The pre-push hook skips the local CI run when a push only deletes refs, instead of checking the checked-out branch, and still passes the refs to the previous hook.
+
+### Changed
+
+- Re-running `bin/install-pre-push-hook` updates an installed hook in place, so `scripts/ci-local.sh --install-hook` upgrades existing hooks.
+
 ## [1.2.0] - 2026-11-05
 
 ### Changed
