@@ -25,3 +25,9 @@ steps:
     plugins:
       - "__PLUGIN__":
           check: apple-silicon
+
+  - label: ":hammer_and_wrench: make test"
+    key: make-test
+    plugins:
+      - "__PLUGIN__":
+          check: make-test
