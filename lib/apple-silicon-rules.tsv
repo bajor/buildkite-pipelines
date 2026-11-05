@@ -1,0 +1,18 @@
+# NVIDIA-only settings in fine-tuning code and configuration, read by
+# checks/apple-silicon.sh. One rule per line: an extended regular expression
+# (git grep -E), a tab, and the Apple Silicon alternative shown on a match.
+# A matching line that ends with the comment "apple-silicon: allow" is
+# accepted, for example a device fallback that also handles CUDA machines.
+\.cuda\(	.cuda() moves tensors to an NVIDIA GPU. Use .to(device) with device "mps" (PyTorch) or MLX, which uses the GPU by default.
+torch\.cuda	torch.cuda is NVIDIA-only. Use torch.backends.mps.is_available() and torch.mps.
+["']cuda(:[0-9]+)?["']	A "cuda" device string. Use "mps" for PyTorch on Apple Silicon.
+CUDA_VISIBLE_DEVICES	CUDA_VISIBLE_DEVICES selects NVIDIA GPUs. Apple Silicon has one GPU, which MPS and MLX use automatically.
+cudnn	cuDNN is NVIDIA-only. Remove cudnn settings.
+nccl	NCCL is NVIDIA-only. Use the "gloo" distributed backend.
+flash_attention_2|flash_attn	FlashAttention needs NVIDIA GPUs. Use attn_implementation="sdpa".
+bitsandbytes|BitsAndBytesConfig|load_in_(4|8)bit	bitsandbytes quantization targets CUDA. Quantize with MLX (mlx_lm.convert -q, QLoRA in mlx_lm.lora) or train in bfloat16.
+["'](paged_[a-z0-9_]+|[a-z]+_(bnb_)?8bit)["']	bitsandbytes optimizers target CUDA. Use optim="adamw_torch".
+fp16[[:space:]]*[:=][[:space:]]*["']?[Tt]rue	fp16 mixed precision in the transformers Trainer targets CUDA. Use bf16=True on Apple Silicon.
+mixed_precision[[:space:]]*[:=][[:space:]]*["']?fp16	fp16 mixed precision in accelerate targets CUDA. Use bf16 or no.
+distributed_type[[:space:]]*:[[:space:]]*["']?(MULTI_GPU|DEEPSPEED|FSDP)	Multi-GPU accelerate modes need NVIDIA GPUs. Use distributed_type: NO.
+(import|from)[[:space:]]+(unsloth|deepspeed|vllm|xformers|triton|apex)([^A-Za-z0-9_]|$)	This library needs NVIDIA GPUs. Use mlx-lm for LoRA fine-tuning and serving, or PyTorch on MPS.

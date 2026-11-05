@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Installs a pre-push hook in the current repository that runs
+# <command> and stops the push when it fails. The existing pre-push hook (for
+# example Entire's) is kept and runs afterwards with the original arguments
+# and stdin, the same chaining convention Entire's own hooks use.
+# Usage: install-pre-push-hook <command relative to the repository root>
+set -euo pipefail
+
+command="${1:?usage: install-pre-push-hook <command>}"
+hook="$(git rev-parse --git-path hooks)/pre-push"
+readonly marker="# local-ci pre-push hook"
+readonly previous_suffix=".pre-local-ci"
+
+if grep -qF "$marker" "$hook" 2>/dev/null; then
+  echo "pre-push hook already installed: $hook"
+  exit 0
+fi
+for file in "$hook$previous_suffix"*; do
+  if [[ -e "$file" ]]; then
+    echo "install-pre-push-hook: $file already exists; not overwriting it" >&2
+    exit 1
+  fi
+done
+
+# Chained hooks find the next hook at "$0.<suffix>", for example Entire's
+# "$0.pre-entire-brain". Renaming every pre-push.* file together with pre-push
+# keeps those paths valid after pre-push becomes pre-push.pre-local-ci.
+for file in "$hook".*; do
+  if [[ -e "$file" && "$file" != "$hook.sample" ]]; then
+    mv "$file" "$hook$previous_suffix${file#"$hook"}"
+  fi
+done
+if [[ -f "$hook" ]]; then
+  mv "$hook" "$hook$previous_suffix"
+fi
+
+cat > "$hook" <<EOF
+#!/bin/sh
+$marker
+# Runs the CI checks locally; a failure stops the push. Skip once with
+# \`git push --no-verify\`.
+"\$(git rev-parse --show-toplevel)/$command" </dev/null || exit 1
+previous="\$0$previous_suffix"
+if [ -x "\$previous" ]; then exec "\$previous" "\$@"; fi
+EOF
+chmod +x "$hook"
+echo "Installed pre-push hook: $hook"

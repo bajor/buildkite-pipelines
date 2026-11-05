@@ -1,9 +1,86 @@
 # Shared CI for Python machine learning repositories.
 # lib/upload-pipeline.sh replaces __PLUGIN__ with the uploading step's plugin
 # reference before upload, so every step runs the same plugin version.
+#
+# Tuned for Buildkite hosted Linux agents:
+# - One cache volume keeps uv's package cache and downloaded Pythons between
+#   builds of the pipeline, so `uv sync` does not download them every time.
+#   Only jobs that exit 0 save changes to it; it is best-effort.
+# - Each step has a timeout, so a hung job cannot run up agent minutes.
+# - A job whose agent is lost (exit status -1) is retried; real check
+#   failures are not.
+env:
+  UV_CACHE_DIR: /tmp/buildkite-cache/uv
+  UV_PYTHON_INSTALL_DIR: /tmp/buildkite-cache/python
+
+cache:
+  name: python-ml
+  paths:
+    - /tmp/buildkite-cache
+
 steps:
   - label: ":broom: Repository hygiene"
     key: repo-hygiene
+    timeout_in_minutes: 15
+    retry:
+      automatic:
+        - exit_status: -1
+          limit: 2
     plugins:
       - "__PLUGIN__":
           check: repo-hygiene
+
+  - label: ":lock: Secrets in git history"
+    key: secrets
+    timeout_in_minutes: 15
+    retry:
+      automatic:
+        - exit_status: -1
+          limit: 2
+    plugins:
+      - "__PLUGIN__":
+          check: secrets
+
+  - label: ":python: Lint and unit tests"
+    key: python
+    timeout_in_minutes: 15
+    retry:
+      automatic:
+        - exit_status: -1
+          limit: 2
+    plugins:
+      - "__PLUGIN__":
+          check: python
+
+  - label: ":apple: Apple Silicon readiness"
+    key: apple-silicon
+    timeout_in_minutes: 15
+    retry:
+      automatic:
+        - exit_status: -1
+          limit: 2
+    plugins:
+      - "__PLUGIN__":
+          check: apple-silicon
+
+  - label: ":hammer_and_wrench: make test"
+    key: make-test
+    timeout_in_minutes: 15
+    retry:
+      automatic:
+        - exit_status: -1
+          limit: 2
+    plugins:
+      - "__PLUGIN__":
+          check: make-test
+
+  - label: ":memo: Changelog"
+    key: changelog
+    timeout_in_minutes: 15
+    retry:
+      automatic:
+        - exit_status: -1
+          limit: 2
+    plugins:
+      - "__PLUGIN__":
+          check: changelog
