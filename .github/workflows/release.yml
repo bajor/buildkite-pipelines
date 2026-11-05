@@ -1,0 +1,15 @@
+name: Release
+
+# Tags vX.Y.Z from the newest CHANGELOG.md section and publishes a GitHub
+# release. The shared workflow only looks at the last commit pushed, so the
+# changelog entry must be the last commit of each pull request.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    uses: bajor/github-workflows/.github/workflows/release.yml@main
