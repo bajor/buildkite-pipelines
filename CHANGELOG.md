@@ -5,6 +5,17 @@ first, in the form `## [X.Y.Z] - YYYY-MM-DD`. Merging it to `main` tags
 `vX.Y.Z` and publishes a GitHub release with that section as the notes.
 Consumers pin a tag in `.buildkite/pipeline.yml`.
 
+## [0.7.0] - 2026-11-05
+
+### Added
+
+- `bin/run-local <pipeline>`: runs every check of a pipeline locally before a push.
+- `bin/install-pre-push-hook <command>`: pre-push hook that chains to existing hooks such as Entire's.
+
+### Changed
+
+- README reorganized around what a repository needs to pass `python-ml`.
+
 ## [0.6.0] - 2026-11-05
 
 ### Added
