@@ -5,6 +5,13 @@ first, in the form `## [X.Y.Z] - YYYY-MM-DD`. Merging it to `main` tags
 `vX.Y.Z` and publishes a GitHub release with that section as the notes.
 Consumers pin a tag in `.buildkite/pipeline.yml`.
 
+## [0.4.0] - 2026-11-05
+
+### Added
+
+- `python` check: requires a uv project (tracked `pyproject.toml` and `uv.lock`, no other dependency files), then runs `uv sync --locked`, `ruff check`, `ruff format --check`, and `pytest` at the locked versions.
+- `lib/install-release.sh` and `lib/uv.sh`: checksum-verified tool downloads shared by checks.
+
 ## [0.3.0] - 2026-11-05
 
 ### Added
