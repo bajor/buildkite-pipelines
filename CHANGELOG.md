@@ -5,6 +5,12 @@ first, in the form `## [X.Y.Z] - YYYY-MM-DD`. Merging it to `main` tags
 `vX.Y.Z` and publishes a GitHub release with that section as the notes.
 Consumers pin a tag in `.buildkite/pipeline.yml`.
 
+## [0.5.0] - 2026-11-05
+
+### Added
+
+- `apple-silicon` check: requires macOS arm64 in `[tool.uv] required-environments`, rejects CUDA-only packages in the macOS arm64 lock and NVIDIA-only settings in code and configuration (`lib/apple-silicon-rules.tsv`), and on an Apple Silicon Mac checks native arm64 Python and GPU access for PyTorch MPS and MLX.
+
 ## [0.4.0] - 2026-11-05
 
 ### Added
