@@ -5,6 +5,12 @@ first, in the form `## [X.Y.Z] - YYYY-MM-DD`. Merging it to `main` tags
 `vX.Y.Z` and publishes a GitHub release with that section as the notes.
 Consumers pin a tag in `.buildkite/pipeline.yml`.
 
+## [0.2.0] - 2026-11-05
+
+### Added
+
+- GitHub Actions: secret and sensitive-data scanning (gitleaks, TruffleHog, PII, cached artifacts, sensitive config files) through `secret-scanning.yml` from bajor/github-workflows.
+
 ## [0.1.0] - 2026-11-05
 
 ### Added
