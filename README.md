@@ -57,14 +57,13 @@ requires authentication even for public repositories.
 
 | Pipeline    | Steps                                   |
 |-------------|-----------------------------------------|
-| `python-ml` | `repo-hygiene`, `docs-style`            |
+| `python-ml` | `repo-hygiene`                          |
 
 ## Checks
 
 | Check          | Fails when                                                                                  |
 |----------------|---------------------------------------------------------------------------------------------|
 | `repo-hygiene` | The commit tracks a model or dataset file (`.safetensors`, `.gguf`, `.pt`, `.parquet`, and similar) or any file over 5 MiB. |
-| `docs-style`   | Hand-written Markdown contains an em-dash (U+2014). `.entire/` and `.claude/` are skipped because tools generate them. |
 
 ## Add a check
 

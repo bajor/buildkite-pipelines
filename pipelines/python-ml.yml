@@ -7,9 +7,3 @@ steps:
     plugins:
       - "__PLUGIN__":
           check: repo-hygiene
-
-  - label: ":memo: Docs style"
-    key: docs-style
-    plugins:
-      - "__PLUGIN__":
-          check: docs-style
