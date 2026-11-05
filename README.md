@@ -72,6 +72,25 @@ separate agents.
 | `apple-silicon` | In a repository with Python files, the project is not ready for Apple Silicon (MLX, or PyTorch on MPS): `uv.lock` does not require macOS arm64 through `[tool.uv] required-environments`; the macOS arm64 lock contains a CUDA-only package (bitsandbytes, flash-attn, xformers, triton, deepspeed, vllm, unsloth, `nvidia-*`, ...); or code and configuration use an NVIDIA-only setting listed in `lib/apple-silicon-rules.tsv` (`cuda` devices, `torch.cuda`, `nccl`, `flash_attention_2`, bitsandbytes quantization and optimizers, fp16 mixed precision, multi-GPU accelerate modes). Each rule prints the Apple alternative; end a line with `# apple-silicon: allow` to accept it. On an Apple Silicon Mac it also fails when the project's Python runs under Rosetta or PyTorch/MLX cannot reach the GPU. |
 | `make-test`    | The repository has no `Makefile`, the `Makefile` has no `test` target, or `make test` fails. `make test` is the one command people and agents run to verify a change. In a uv project, the pinned uv is on `PATH` while it runs. |
 
+## Run the checks before pushing
+
+Buildkite builds cost money, so find failures locally first. From the root of a
+consumer repository, with this plugin cloned at the pinned version:
+
+```bash
+<plugin>/bin/run-local python-ml              # runs every check of the pipeline
+<plugin>/bin/install-pre-push-hook <command>  # runs <command> before each push
+```
+
+`run-local` runs all checks even after a failure and exits nonzero if any failed.
+`install-pre-push-hook` keeps the repository's existing pre-push hook, such as
+Entire's, and runs it afterwards with the original arguments and stdin. A failing
+command stops the push; `git push --no-verify` skips the hook once.
+
+Consumer repositories wrap this in `scripts/ci-local.sh`, which reads the plugin
+version and pipeline name from `.buildkite/pipeline.yml` so local and remote CI
+run the same checks.
+
 ## Add a check
 
 1. Add an executable `checks/<name>.sh`. A nonzero exit fails the step.
