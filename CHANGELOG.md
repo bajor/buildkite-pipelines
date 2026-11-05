@@ -5,6 +5,14 @@ first, in the form `## [X.Y.Z] - YYYY-MM-DD`. Merging it to `main` tags
 `vX.Y.Z` and publishes a GitHub release with that section as the notes.
 Consumers pin a tag in `.buildkite/pipeline.yml`.
 
+## [1.0.0] - 2026-11-05
+
+### Added
+
+- `changelog` check in `python-ml`: `CHANGELOG.md` must exist, its newest section must be `## [X.Y.Z]`, and on a branch that version must be higher than the base branch's. This repository's CI runs it too, before `release.yml` tags a release.
+
+First release for consumers: basal and bielik pin `v1.0.0`.
+
 ## [0.8.0] - 2026-11-05
 
 ### Changed
