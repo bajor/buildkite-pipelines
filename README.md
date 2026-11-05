@@ -194,6 +194,8 @@ Entire's, and runs it afterwards with the original arguments and stdin. A failin
 command stops the push; `git push --no-verify` skips the hook once.
 On a branch that does not contain the command, such as one created before the
 CI setup, the hook prints a message and the push continues.
+A push that only deletes branches or tags skips the checks too. Running
+`install-pre-push-hook` again updates an installed hook to the current version.
 
 Consumer repositories wrap this in `scripts/ci-local.sh`, which reads the plugin
 version and pipeline name from `.buildkite/pipeline.yml` so local and remote CI
