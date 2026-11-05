@@ -57,13 +57,14 @@ requires authentication even for public repositories.
 
 | Pipeline    | Steps                                   |
 |-------------|-----------------------------------------|
-| `python-ml` | `repo-hygiene`                          |
+| `python-ml` | `repo-hygiene`, `secrets`               |
 
 ## Checks
 
 | Check          | Fails when                                                                                  |
 |----------------|---------------------------------------------------------------------------------------------|
 | `repo-hygiene` | The commit tracks a model or dataset file (`.safetensors`, `.gguf`, `.pt`, `.parquet`, and similar) or any file over 5 MiB. |
+| `secrets`      | Any commit in history contains a credential, such as a Hugging Face or cloud token. A secret deleted later still fails, because it stays readable in history and must be rotated. Uses gitleaks 8.30.1, downloaded from GitHub and checked against a pinned SHA-256. |
 
 ## Add a check
 

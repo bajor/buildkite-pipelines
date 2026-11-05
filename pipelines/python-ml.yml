@@ -7,3 +7,9 @@ steps:
     plugins:
       - "__PLUGIN__":
           check: repo-hygiene
+
+  - label: ":lock: Secrets in git history"
+    key: secrets
+    plugins:
+      - "__PLUGIN__":
+          check: secrets
