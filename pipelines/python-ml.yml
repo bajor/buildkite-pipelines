@@ -13,3 +13,9 @@ steps:
     plugins:
       - "__PLUGIN__":
           check: secrets
+
+  - label: ":python: Lint and unit tests"
+    key: python
+    plugins:
+      - "__PLUGIN__":
+          check: python

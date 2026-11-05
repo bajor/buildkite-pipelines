@@ -6,4 +6,4 @@ test: lint
 	bats tests
 
 lint:
-	shellcheck $(SCRIPTS)
+	shellcheck -x $(SCRIPTS)
