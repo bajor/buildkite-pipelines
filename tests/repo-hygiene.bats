@@ -11,6 +11,12 @@ setup() {
   [ "$status" -eq 0 ]
 }
 
+@test "fails when the repository has no commit to inspect" {
+  run "$PLUGIN_DIR/checks/repo-hygiene.sh"
+  [ "$status" -ne 0 ]
+  [[ "$output" != *"No model artifacts"* ]]
+}
+
 @test "fails on tracked model weights regardless of extension case" {
   mkdir models
   echo weights > "models/Bielik 4.5B.GGUF"

@@ -6,8 +6,15 @@ set -euo pipefail
 
 readonly em_dash=$'\xe2\x80\x94'
 
-if git grep -n -I -F -e "$em_dash" -- '*.md' ':(exclude).entire/' ':(exclude).claude/'; then
-  echo "Replace the em-dashes above with a comma, colon, parentheses, or a new sentence." >&2
-  exit 1
-fi
-echo "No em-dashes in hand-written Markdown."
+readonly grep_found=0 grep_not_found=1
+
+status="$grep_found"
+git grep -n -I -F -e "$em_dash" -- '*.md' ':(exclude).entire/' ':(exclude).claude/' || status=$?
+case "$status" in
+  "$grep_found")
+    echo "Replace the em-dashes above with a comma, colon, parentheses, or a new sentence." >&2
+    exit 1
+    ;;
+  "$grep_not_found") echo "No em-dashes in hand-written Markdown." ;;
+  *) exit "$status" ;;
+esac

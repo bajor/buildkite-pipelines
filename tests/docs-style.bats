@@ -13,6 +13,14 @@ setup() {
   [[ "$output" == *"docs.md:1"* ]]
 }
 
+@test "fails when git cannot read the repository" {
+  rm -rf .git
+  printf 'Model \xe2\x80\x94 weights\n' > docs.md
+  run "$PLUGIN_DIR/checks/docs-style.sh"
+  [ "$status" -ne 0 ]
+  [[ "$output" != *"No em-dashes"* ]]
+}
+
 @test "ignores Markdown generated under .entire/" {
   mkdir .entire
   printf 'Guide \xe2\x80\x94 Brain\n' > .entire/agent-guide.md
