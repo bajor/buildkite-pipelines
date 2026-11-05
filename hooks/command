@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Runs in one of two modes, chosen by which plugin option the step sets:
+#   pipeline: upload a template from pipelines/ as this build's steps
+#   check:    run one script from checks/
+set -euo pipefail
+
+plugin_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+pipeline="${BUILDKITE_PLUGIN_BUILDKITE_PIPELINES_PIPELINE:-}"
+check="${BUILDKITE_PLUGIN_BUILDKITE_PIPELINES_CHECK:-}"
+
+fail() {
+  echo "buildkite-pipelines: $*" >&2
+  exit 1
+}
+
+# Prints the path of <dir>/<name>.<ext> inside the plugin. Names are limited
+# to lowercase words so an option value cannot point outside that directory.
+resolve() {
+  local dir="$1" name="$2" ext="$3"
+  local path="$plugin_dir/$dir/$name.$ext"
+  if [[ ! "$name" =~ ^[a-z][a-z0-9-]*$ || ! -f "$path" ]]; then
+    local available="" file
+    for file in "$plugin_dir/$dir"/*."$ext"; do
+      available+=" $(basename "$file" ".$ext")"
+    done
+    fail "unknown $dir entry '$name'; available:$available"
+  fi
+  echo "$path"
+}
+
+case "${pipeline:+pipeline}${check:+check}" in
+  pipeline)
+    template="$(resolve pipelines "$pipeline" yml)"
+    exec "$plugin_dir/lib/upload-pipeline.sh" "$template"
+    ;;
+  check)
+    script="$(resolve checks "$check" sh)"
+    exec "$script"
+    ;;
+  *)
+    fail "set exactly one plugin option, 'pipeline' or 'check'." \
+      "Reference the plugin without a .git suffix, for example" \
+      "https://github.com/bajor/buildkite-pipelines#v1.0.0, or the options are not visible here."
+    ;;
+esac

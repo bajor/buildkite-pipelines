@@ -1,0 +1,18 @@
+name: buildkite-pipelines
+description: Shared Buildkite pipelines and checks for bajor repositories
+author: https://github.com/bajor
+requirements:
+  - bash
+  - git
+configuration:
+  properties:
+    pipeline:
+      type: string
+      description: Name of a template in pipelines/ (without .yml) to upload as this build's steps
+    check:
+      type: string
+      description: Name of a script in checks/ (without .sh) to run in this step
+  oneOf:
+    - required: [pipeline]
+    - required: [check]
+  additionalProperties: false
