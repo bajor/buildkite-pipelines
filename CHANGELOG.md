@@ -5,6 +5,12 @@ first, in the form `## [X.Y.Z] - YYYY-MM-DD`. Merging it to `main` tags
 `vX.Y.Z` and publishes a GitHub release with that section as the notes.
 Consumers pin a tag in `.buildkite/pipeline.yml`.
 
+## [0.3.0] - 2026-11-05
+
+### Added
+
+- `secrets` check: gitleaks 8.30.1 scans the full git history for credentials, downloaded with a pinned SHA-256.
+
 ## [0.2.0] - 2026-11-05
 
 ### Added
