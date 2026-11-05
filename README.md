@@ -57,7 +57,7 @@ requires authentication even for public repositories.
 
 | Pipeline    | Steps                                                              |
 |-------------|--------------------------------------------------------------------|
-| `python-ml` | `repo-hygiene`, `secrets`, `python`, `apple-silicon`, `make-test` |
+| `python-ml` | `repo-hygiene`, `secrets`, `python`, `apple-silicon`, `make-test`, `changelog` |
 
 The steps have no dependencies on each other, so they run in parallel on
 separate agents of the default queue.
@@ -99,6 +99,8 @@ in parentheses):
 
 5. No CUDA-only packages or NVIDIA-only settings (see `apple-silicon`).
 6. A `Makefile` whose `test` target runs every test and linter.
+7. A `CHANGELOG.md` whose newest section is `## [X.Y.Z] - YYYY-MM-DD`, with a
+   higher version on every branch than on `main`.
 
 ## Checks
 
@@ -167,6 +169,15 @@ target, or `make test` fails. `make test` is the one command people and agents
 run to verify a change. In a uv project the pinned uv is on `PATH` while it
 runs.
 
+
+### `changelog`
+
+Fails when `CHANGELOG.md` is missing or its newest section is not
+`## [X.Y.Z]` (optionally ` - YYYY-MM-DD`). On any branch other than the base
+branch it also fails unless that version is higher than the newest version on
+the base branch, so every change adds a release. The base branch is
+`CHANGELOG_BASE_BRANCH`, else the pull request base, else the pipeline's
+default branch, else `main`.
 ## Run the checks before pushing
 
 Buildkite builds cost money, so find failures locally first. From the root of a
@@ -213,7 +224,17 @@ runs `make test` and the shared secret scanning workflow on every pull request.
 
 ## Release
 
-1. Merge to `main` with `make test` passing.
-2. Tag the merge commit, for example `git tag v1.1.0 && git push origin v1.1.0`.
-3. Change the tag in each consumer's `.buildkite/pipeline.yml`, run
-   `scripts/ci-local.sh` there, and push.
+Every pull request to `main` ends with a commit that adds a version section at
+the top of `CHANGELOG.md`. GitHub Actions in this repository:
+
+| Workflow | When | What |
+|----------|------|------|
+| `ci.yml` | pull requests, pushes to `main` | `make test`, and `checks/changelog.sh` for a valid, higher version |
+| `changelog.yml` | pull requests to `main` | `changelog-check.yml` from bajor/github-workflows: `CHANGELOG.md` was modified |
+| `release.yml` | pushes to `main` | `release.yml` from bajor/github-workflows: tags `vX.Y.Z` and publishes a GitHub release from the newest section |
+| `secret-scanning.yml` | pull requests, pushes to `main` | shared secret and sensitive-data scanning |
+
+`release.yml` only diffs the last commit pushed, so the changelog commit must
+be the last commit of each pull request. To adopt a release in a consumer,
+change the tag in its `.buildkite/pipeline.yml`, run `scripts/ci-local.sh`, and
+push.

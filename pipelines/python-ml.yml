@@ -73,3 +73,14 @@ steps:
     plugins:
       - "__PLUGIN__":
           check: make-test
+
+  - label: ":memo: Changelog"
+    key: changelog
+    timeout_in_minutes: 15
+    retry:
+      automatic:
+        - exit_status: -1
+          limit: 2
+    plugins:
+      - "__PLUGIN__":
+          check: changelog
