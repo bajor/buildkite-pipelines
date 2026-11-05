@@ -58,10 +58,44 @@ setup() {
   [[ "$output" == *"already exists"* ]]
 }
 
-@test "installing the pre-push hook twice keeps a single chain" {
+@test "re-installing updates an installed hook in place and keeps the chain" {
+  hooks="$(git rev-parse --git-path hooks)"
+  printf '#!/bin/sh\necho previous-hook\n' > "$hooks/pre-push"
+  chmod +x "$hooks/pre-push"
   "$PLUGIN_DIR/bin/install-pre-push-hook" ci.sh
+  # An older installed hook: same marker, outdated body.
+  printf '#!/bin/sh\n# local-ci pre-push hook\nexit 1\n' > "$hooks/pre-push"
+
   run "$PLUGIN_DIR/bin/install-pre-push-hook" ci.sh
   [ "$status" -eq 0 ]
-  [[ "$output" == *"already installed"* ]]
-  [ ! -e "$(git rev-parse --git-path hooks)/pre-push.pre-local-ci" ]
+  [[ "$output" == *"Updated pre-push hook"* ]]
+  grep -q "only deletes refs" "$hooks/pre-push"
+  [ -e "$hooks/pre-push.pre-local-ci" ]
+  [ ! -e "$hooks/pre-push.pre-local-ci.pre-local-ci" ]
+}
+
+@test "a push that only deletes refs skips the CI run and still feeds the previous hook" {
+  hooks="$(git rev-parse --git-path hooks)"
+  printf '#!/bin/sh\necho previous-hook "$(cat)"\n' > "$hooks/pre-push"
+  chmod +x "$hooks/pre-push"
+  printf '#!/bin/sh\necho ci-ran\nexit 1\n' > ci.sh
+  chmod +x ci.sh
+  "$PLUGIN_DIR/bin/install-pre-push-hook" ci.sh
+  zero=0000000000000000000000000000000000000000
+  sha=1111111111111111111111111111111111111111
+
+  run "$hooks/pre-push" origin <<< "(delete) $zero refs/heads/old $sha"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"only deletes refs"* ]]
+  [[ "$output" != *"ci-ran"* ]]
+  [[ "$output" == *"previous-hook (delete) $zero refs/heads/old $sha"* ]]
+
+  run "$hooks/pre-push" origin <<< "(delete) $zero refs/heads/old $sha
+refs/heads/main $sha refs/heads/main $zero"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"ci-ran"* ]]
+
+  run "$hooks/pre-push" origin <<< "unparseable line"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"ci-ran"* ]]
 }

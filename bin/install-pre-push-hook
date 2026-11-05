@@ -11,8 +11,44 @@ hook="$(git rev-parse --git-path hooks)/pre-push"
 readonly marker="# local-ci pre-push hook"
 readonly previous_suffix=".pre-local-ci"
 
+# Writes the hook. A push that only deletes refs (every line of git's stdin
+# has an all-zeros local SHA) has nothing to check, so it skips the CI run; any
+# other line, including one it cannot parse, runs it. The refs are then passed
+# on unchanged to the previous hook, which may read them.
+write_hook() {
+  cat > "$hook" <<EOF
+#!/bin/sh
+$marker
+# Runs the CI checks locally; a failure stops the push. Skip once with
+# \`git push --no-verify\`. Pushes that only delete refs, and branches without
+# the command (older than the CI setup), push without the local run.
+refs="\$(cat)"
+updates="\$(printf '%s\n' "\$refs" | awk 'NF && \$2 !~ /^0+\$/')"
+ci="\$(git rev-parse --show-toplevel)/$command"
+if [ -n "\$refs" ] && [ -z "\$updates" ]; then
+  echo "pre-push: the push only deletes refs; skipping the local CI run." >&2
+elif [ -x "\$ci" ]; then
+  "\$ci" </dev/null || exit 1
+else
+  echo "pre-push: $command is not on this branch; skipping the local CI run." >&2
+fi
+previous="\$0$previous_suffix"
+if [ -x "\$previous" ]; then
+  if [ -n "\$refs" ]; then
+    printf '%s\n' "\$refs" | "\$previous" "\$@"
+  else
+    "\$previous" "\$@" </dev/null
+  fi
+fi
+EOF
+  chmod +x "$hook"
+}
+
+# Re-running the installer updates an installed hook in place; the chain of
+# previous hooks is already set up and is left alone.
 if grep -qF "$marker" "$hook" 2>/dev/null; then
-  echo "pre-push hook already installed: $hook"
+  write_hook
+  echo "Updated pre-push hook: $hook"
   exit 0
 fi
 for file in "$hook$previous_suffix"*; do
@@ -34,20 +70,5 @@ if [[ -f "$hook" ]]; then
   mv "$hook" "$hook$previous_suffix"
 fi
 
-cat > "$hook" <<EOF
-#!/bin/sh
-$marker
-# Runs the CI checks locally; a failure stops the push. Skip once with
-# \`git push --no-verify\`. Branches without the command (older than the CI
-# setup) push without the local run.
-ci="\$(git rev-parse --show-toplevel)/$command"
-if [ -x "\$ci" ]; then
-  "\$ci" </dev/null || exit 1
-else
-  echo "pre-push: $command is not on this branch; skipping the local CI run." >&2
-fi
-previous="\$0$previous_suffix"
-if [ -x "\$previous" ]; then exec "\$previous" "\$@"; fi
-EOF
-chmod +x "$hook"
+write_hook
 echo "Installed pre-push hook: $hook"
