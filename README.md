@@ -62,6 +62,28 @@ requires authentication even for public repositories.
 The steps have no dependencies on each other, so they run in parallel on
 separate agents of the default queue.
 
+## Buildkite settings
+
+The pipelines target Buildkite hosted Linux agents. GitHub Actions in this
+repository only tests the plugin itself; consumer CI runs on Buildkite.
+
+Each template sets, for every step:
+
+| Setting | Value | Why |
+|---------|-------|-----|
+| `cache` volume `python-ml` at `/tmp/buildkite-cache` | `UV_CACHE_DIR` and `UV_PYTHON_INSTALL_DIR` inside it | uv packages and Pythons persist between builds instead of downloading each time. Only jobs that exit 0 save changes; the cache is best-effort. |
+| `timeout_in_minutes` | 15 | A hung job cannot run up agent minutes. |
+| `retry.automatic` | `exit_status: -1`, `limit: 2` | A job whose agent is lost is retried; check failures are not. |
+
+Set these on each consumer pipeline (Pipeline Settings, or the REST API fields
+in parentheses):
+
+| Setting | Value | Why |
+|---------|-------|-----|
+| Skip intermediate builds (`skip_queued_branch_builds`) | on, filter `!main` | Only the newest queued build of a trail branch runs. |
+| Cancel intermediate builds (`cancel_running_branch_builds`) | on, filter `!main` | A new push to a trail branch stops the running build. `main` builds always finish. |
+| Default and maximum command step timeout (`default_command_step_timeout`, `maximum_command_step_timeout`) | 15, 30 | Caps steps that set no timeout, such as the upload step. |
+
 ## What a repository needs to pass `python-ml`
 
 1. No model weights, datasets, or files over 5 MiB in git.
