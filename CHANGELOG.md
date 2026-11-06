@@ -12,6 +12,8 @@ Consumers pin a tag in `.buildkite/pipeline.yml`.
 - `python-ml-nvidia` checks Linux x86-64 dependency resolution instead of
   rejecting CUDA packages. The existing `python-ml` Apple Silicon pipeline is
   unchanged. Hosted CI cannot test CUDA execution on a local GPU.
+- The Linux check inspects the locked dependency tree and rejects Apple-only
+  packages that resolve on Linux, including MLX variants.
 
 ## [1.3.0] - 2026-11-05
 
