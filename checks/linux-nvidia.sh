@@ -17,7 +17,8 @@ work_dir="$(mktemp -d "${TMPDIR:-/tmp}/linux-nvidia.XXXXXX")"
 trap 'rm -rf "$work_dir"' EXIT
 uv="$(install_uv linux-nvidia "$work_dir")"
 
-python="$("$uv" python find)"
+# The lock parser uses tomllib even if the consumer project targets Python 3.10.
+python="$("$uv" python find --no-project 3.12)"
 if ! "$python" -c '
 import sys
 import tomllib
