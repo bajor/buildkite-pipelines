@@ -5,6 +5,14 @@ first, in the form `## [X.Y.Z] - YYYY-MM-DD`. Merging it to `main` tags
 `vX.Y.Z` and publishes a GitHub release with that section as the notes.
 Consumers pin a tag in `.buildkite/pipeline.yml`.
 
+## [1.4.0] - 2026-11-06
+
+### Added
+
+- `python-ml-nvidia` checks Linux x86-64 dependency resolution instead of
+  rejecting CUDA packages. The existing `python-ml` Apple Silicon pipeline is
+  unchanged. Hosted CI cannot test CUDA execution on a local GPU.
+
 ## [1.3.0] - 2026-11-05
 
 ### Fixed

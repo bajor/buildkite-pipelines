@@ -58,6 +58,12 @@ requires authentication even for public repositories.
 | Pipeline    | Steps                                                              |
 |-------------|--------------------------------------------------------------------|
 | `python-ml` | `repo-hygiene`, `secrets`, `python`, `apple-silicon`, `make-test`, `changelog` |
+| `python-ml-nvidia` | `repo-hygiene`, `secrets`, `python`, `linux-nvidia`, `make-test`, `changelog` |
+
+Use `pipeline: python-ml-nvidia` for Linux x86-64 repositories that use an
+NVIDIA GPU. The original `python-ml` pipeline remains for Apple Silicon.
+Buildkite hosted Linux agents have no GPU, so the NVIDIA pipeline checks the
+dependency lock, lint, tests, and repository policy, not CUDA execution.
 
 The steps have no dependencies on each other, so they run in parallel on
 separate agents of the default queue.
@@ -84,20 +90,24 @@ in parentheses):
 | Cancel intermediate builds (`cancel_running_branch_builds`) | on, filter `!main` | A new push to a trail branch stops the running build. `main` builds always finish. |
 | Default and maximum command step timeout (`default_command_step_timeout`, `maximum_command_step_timeout`) | 15, 30 | Caps steps that set no timeout, such as the upload step. |
 
-## What a repository needs to pass `python-ml`
+## What a repository needs to pass the Python ML pipelines
 
 1. No model weights, datasets, or files over 5 MiB in git.
 2. No credentials anywhere in git history.
 3. Python managed by uv: tracked `pyproject.toml` and `uv.lock`, with `ruff`
    and `pytest` in the `dev` dependency group, and no other dependency files.
-4. In `pyproject.toml`:
+4. In `pyproject.toml`, require the deployment platform. For `python-ml`:
 
    ```toml
    [tool.uv]
    required-environments = ["sys_platform == 'darwin' and platform_machine == 'arm64'"]
    ```
 
-5. No CUDA-only packages or NVIDIA-only settings (see `apple-silicon`).
+   For `python-ml-nvidia`, require
+   `"sys_platform == 'linux' and platform_machine == 'x86_64'"` instead.
+5. For `python-ml`, no CUDA-only packages or NVIDIA-only settings (see
+   `apple-silicon`). For `python-ml-nvidia`, Linux dependency resolution must
+   exclude Apple-only packages. Run a CUDA smoke test on the real GPU host.
 6. A `Makefile` whose `test` target runs every test and linter.
 7. A `CHANGELOG.md` whose newest section is `## [X.Y.Z] - YYYY-MM-DD`, with a
    higher version on every branch than on `main`.
@@ -162,6 +172,15 @@ NVIDIA CUDA. In a repository with Python files it fails when:
    runs under Rosetta, `torch.backends.mps.is_available()` is false, or MLX's
    default device is not the GPU. Hosted Linux agents skip this part.
 
+### `linux-nvidia`
+
+For a Python project, verifies `uv.lock` requires Linux x86-64, matches
+`pyproject.toml`, resolves for Linux x86-64, and does not install MLX or other
+Apple-only packages on Linux. CUDA libraries and FP16 settings are allowed.
+This check does not require an NVIDIA device on a hosted agent. Before a push,
+test CUDA availability and one FP16 operation on the actual host; a matching
+lock alone cannot establish GPU compatibility.
+
 ### `make-test`
 
 Fails when the repository has no `Makefile`, the `Makefile` has no `test`
@@ -222,7 +241,7 @@ and [ShellCheck](https://www.shellcheck.net/).
 make test   # ShellCheck, then every bats test
 ```
 
-The tests for `secrets`, `python`, `apple-silicon`, and `run-local` download
+The tests for `secrets`, `python`, `apple-silicon`, `linux-nvidia`, and `run-local` download
 gitleaks, uv, Python, and packages, so they need network access. GitHub Actions
 runs `make test` and the shared secret scanning workflow on every pull request.
 
