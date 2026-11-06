@@ -21,3 +21,31 @@ setup() {
   [ "$status" -eq 1 ]
   [[ "$output" == *"require Linux x86-64"* ]]
 }
+
+@test "rejects an Apple-only package that resolves on Linux" {
+  mkdir mlx-audio
+  cat > mlx-audio/pyproject.toml <<'EOF'
+[project]
+name = "mlx-audio"
+version = "0.0.1"
+requires-python = ">=3.12"
+
+[tool.uv]
+package = false
+EOF
+  sed -i 's/dependencies = \[\]/dependencies = ["mlx-audio"]/' pyproject.toml
+  cat >> pyproject.toml <<'EOF'
+
+[tool.uv.sources]
+mlx-audio = { path = "mlx-audio" }
+EOF
+  # Resolve the synthetic, platform-independent package into the fixture lock.
+  source "$PLUGIN_DIR/lib/uv.sh"
+  uv="$(install_uv linux-nvidia "$BATS_TEST_TMPDIR")"
+  "$uv" lock
+  commit_all
+
+  run "$PLUGIN_DIR/checks/linux-nvidia.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Apple-only packages resolved on Linux: mlx-audio"* ]]
+}
