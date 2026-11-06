@@ -6,7 +6,7 @@ env:
   UV_LINK_MODE: copy
 
 cache:
-  name: python-ml
+  name: python-ml-nvidia
   paths:
     - /tmp/buildkite-cache
 
