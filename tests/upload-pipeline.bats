@@ -37,7 +37,7 @@ EOF
   [ "$(grep -cF "\"$reference\":" "$BATS_TEST_TMPDIR/uploaded.yml")" -eq 6 ]
 }
 
-@test "verification template pins reused checks and the trusted verification job" {
+@test "verification template pins reused checks and the request job" {
   export BUILDKITE_PLUGINS='[{"'"$reference"'":{"pipeline":"verification"}}]'
   run "$PLUGIN_DIR/lib/upload-pipeline.sh" "$PLUGIN_DIR/pipelines/verification.yml"
   [ "$status" -eq 0 ]

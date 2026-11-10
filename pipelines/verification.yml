@@ -13,8 +13,9 @@ steps:
       - "__PLUGIN__":
           check: secrets
 
-  - label: ":shield: Trusted verification"
+  - label: ":shield: Verification request (backend required)"
     key: verification
+    depends_on: [repo-hygiene, secrets]
     agents:
       queue: trusted-verification
     timeout_in_minutes: 30

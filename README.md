@@ -72,44 +72,55 @@ provisioned `trusted-verification` queue.
 
 ### Verification orchestration (infrastructure prerequisite)
 
-Select `pipeline: verification` at an approved immutable plugin commit. Existing
-Python ML pipelines remain unchanged. This template reuses hygiene and secret
-checks and dispatches verification through a fixed worker entrypoint. It does not
-implement architecture, purity, property, mutation, native or performance checks.
+Select `pipeline: verification` at an approved immutable plugin commit. The
+existing Python ML pipelines remain unchanged. This template reuses hygiene and
+secret checks, then requests verification from a future worker-owned backend.
+It implements no product checks, source materialization, receipts or merge gate.
 
-The worker must provide `/opt/buildkite-verification/bin/verifier` and
-`/etc/buildkite-verification/policy.sha256`, protected from candidate writes.
-The policy file contains one lowercase SHA-256 digest. Missing prerequisites,
-dirty checkouts, a mismatch between `BUILDKITE_COMMIT` and HEAD, missing receipts,
-rejected receipts and failed artifact uploads fail the check.
+The request adapter requires `/opt/buildkite-verification/bin/verifier` and
+`/etc/buildkite-verification/policy.sha256` (one lowercase SHA-256 digest).
+Missing paths, invalid pins, absent build/job identity, non-full commit IDs and
+backend failures return nonzero. `HEAD`, short SHAs and implicit merge refs must
+be resolved by the trusted scheduler before dispatch. Local `run-local
+verification` requires this provisioned backend and job context; ordinary local
+product checks remain consumer-specific commands.
 
-The following is a **proposed protocol**, not an available verifier integration:
+Proposed protocol 2, not an available integration:
 
-1. `verifier run --protocol-version 1 --source-root PATH --revision SHA
-   --policy-sha256 DIGEST --evidence-dir PATH` executes every gate required by the
-   externally approved repository policy and writes `receipt.json`.
-2. `verifier validate-receipt --protocol-version 1 --receipt PATH --revision SHA
-   --policy-sha256 DIGEST --require-pass` rejects incompatible protocols, stale
-   revisions, wrong policies, missing gates, invalid evidence and nonpassing runs.
-3. Only a validated receipt is uploaded. Detailed evidence and failure artifacts
-   must be retained by the verifier's protected evidence service, linked by the
-   receipt. Do not put user content or secrets in public CI artifacts.
+`verifier request-and-wait --protocol-version 2 --candidate-revision SHA
+--policy-sha256 DIGEST --build-id ID --job-id ID`
 
-Provisioning that verifier, attestation validation and trusted merge authorization
-remain separate infrastructure work. Shared verifier modules belong in this
-repository; workers install an approved immutable release. The worker must authenticate
-job/repository identity, rebuild from trusted source snapshots, and validate
-requirements and evidence. Environment values and candidate-generated files alone
-are not trusted proof. Bootstrap must prevent candidate hooks, environment changes
-or pipeline edits from replacing this job or accessing its verification authority.
+All arguments are untrusted request hints. The adapter clears inherited job
+credentials, Git configuration and PATH before invoking the fixed entrypoint.
+It does not inspect Git, execute candidate tests, validate receipts or upload
+artifacts. The backend must independently authenticate repository, pipeline,
+build/job/attempt and exact candidate/base revisions through a protected control
+plane. It must reject mismatches, missing gates, stale results and unsupported
+protocols, and obtain a fresh private source snapshot rather than trust the
+candidate checkout, its Git configuration, ignored files or hooks.
 
-Consumer repositories own application-specific verification scenarios and feature
-maps. They select approved shared modules by pinned policy/configuration; they do
-not copy job definitions or provide verifier executables. Repository-local code
-may request additional tests but cannot remove required policy gates. The Bats
-test doubles prove orchestration and failure propagation only, not verifier
-correctness, worker isolation or Apple-tool availability. No production verifier,
-Buildkite execution or macOS verification is established by these tests.
+The backend runs tests without verifier credentials, retains failure artifacts,
+and publishes authenticated evidence from a separate authority. It returns zero
+only after the required checks and evidence complete. The required merge gate
+must independently verify that evidence and the approved job origin. A green
+plugin step, its label, queue name or candidate-uploaded artifact is never merge
+authorization. The test doubles establish request/failure propagation only.
+
+Before production use, a separate infrastructure change must demonstrate protected
+worker binaries/policies and parent directories, isolated disposable jobs,
+credential separation, authenticated exact-source evidence and host admission.
+Candidate-selected plugins, repository hooks and environment changes cannot be
+trusted to enforce these controls. Use agent-level pre-bootstrap policy and
+approved plugin/command pins; evaluate self-hosted signed pipelines where
+supported. These protections are not implemented by this template. See
+[Buildkite security](https://buildkite.com/docs/agent/self-hosted/security) and
+[signed pipeline limits](https://buildkite.com/docs/agent/self-hosted/security/signed-pipelines).
+
+A missing queue can leave a job waiting before its runtime timeout begins. The
+future scheduler must enforce a queue/start deadline and fail admission on
+missing/expired jobs. No Buildkite worker execution is established by local tests.
+Consumer repositories keep application-specific scenarios and feature maps local;
+shared pipeline/check implementations remain here and are referenced by pin.
 
 ## Buildkite settings
 

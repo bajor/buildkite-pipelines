@@ -1,106 +1,69 @@
 load helpers
 
 setup() {
-  init_repo
-  echo text > README.md
-  commit_all
-  export BUILDKITE_COMMIT="$(git rev-parse HEAD)"
+  export BUILDKITE_COMMIT=0123456789abcdef0123456789abcdef01234567
+  export BUILDKITE_BUILD_ID=fixture-build
+  export BUILDKITE_JOB_ID=fixture-job
   verifier="$BATS_TEST_TMPDIR/verifier"
   policy="$BATS_TEST_TMPDIR/policy.sha256"
   printf '%064d\n' 0 > "$policy"
-  export FIXTURE_LOG="$BATS_TEST_TMPDIR/calls"
-  export FIXTURE_RECEIPT="$BATS_TEST_TMPDIR/uploaded.json"
   cat > "$verifier" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
-printf '%s\n' "$*" >> "$FIXTURE_LOG"
-case "$1" in
-  run)
-    [[ "${FIXTURE_RUN_STATUS:-0}" == 0 ]] || exit "$FIXTURE_RUN_STATUS"
-    while [[ "$1" != --evidence-dir ]]; do shift; done
-    [[ "${FIXTURE_NO_RECEIPT:-0}" == 1 ]] || printf '{"fixture":true}\n' > "$2/receipt.json"
-    ;;
-  validate-receipt) exit "${FIXTURE_VALIDATE_STATUS:-0}" ;;
-esac
+fixture_dir="$(cd "$(dirname "$0")" && pwd)"
+printf '%s\n' "$*" >> "$fixture_dir/calls"
+[[ -z "${BUILDKITE_AGENT_ACCESS_TOKEN+x}${AWS_SECRET_ACCESS_KEY+x}${GIT_CONFIG_COUNT+x}" ]] || exit 31
+[[ "$PATH" == /usr/bin:/bin ]] || exit 32
+[[ ! -f "$fixture_dir/fail" ]] || exit 23
 SH
   chmod +x "$verifier"
-  mkdir "$BATS_TEST_TMPDIR/bin"
-  cat > "$BATS_TEST_TMPDIR/bin/buildkite-agent" <<'SH'
-#!/usr/bin/env bash
-set -euo pipefail
-[[ "${FIXTURE_UPLOAD_STATUS:-0}" == 0 ]] || exit "$FIXTURE_UPLOAD_STATUS"
-cp receipt.json "$FIXTURE_RECEIPT"
-SH
-  chmod +x "$BATS_TEST_TMPDIR/bin/buildkite-agent"
-  PATH="$BATS_TEST_TMPDIR/bin:$PATH"
 }
 
-@test "passes revision and policy to the verifier before uploading its accepted receipt" {
+@test "requests an exact candidate policy and build job from the backend" {
   run "$PLUGIN_DIR/lib/verification.sh" "$verifier" "$policy"
   [ "$status" -eq 0 ]
-  [ -s "$FIXTURE_RECEIPT" ]
-  grep -q -- "--revision $BUILDKITE_COMMIT --policy-sha256 $(cat "$policy")" "$FIXTURE_LOG"
-  grep -q '^validate-receipt .* --require-pass$' "$FIXTURE_LOG"
+  [ "$(cat "$BATS_TEST_TMPDIR/calls")" = "request-and-wait --protocol-version 2 --candidate-revision $BUILDKITE_COMMIT --policy-sha256 $(cat "$policy") --build-id $BUILDKITE_BUILD_ID --job-id $BUILDKITE_JOB_ID" ]
 }
 
-@test "fails without a verifier or valid policy before running verification" {
+@test "missing verifier directory or invalid policy cannot dispatch" {
   run "$PLUGIN_DIR/lib/verification.sh" "$verifier.absent" "$policy"
+  [ "$status" -eq 1 ]
+  run "$PLUGIN_DIR/lib/verification.sh" "$BATS_TEST_TMPDIR" "$policy"
   [ "$status" -eq 1 ]
   printf invalid > "$policy"
   run "$PLUGIN_DIR/lib/verification.sh" "$verifier" "$policy"
   [ "$status" -eq 1 ]
-  [ ! -e "$FIXTURE_LOG" ]
+  [ ! -e "$BATS_TEST_TMPDIR/calls" ]
 }
 
-@test "rejects the wrong revision and uncommitted source" {
-  BUILDKITE_COMMIT=wrong run "$PLUGIN_DIR/lib/verification.sh" "$verifier" "$policy"
+@test "missing full revision or build job identity cannot dispatch" {
+  BUILDKITE_COMMIT=HEAD run "$PLUGIN_DIR/lib/verification.sh" "$verifier" "$policy"
   [ "$status" -eq 1 ]
-  echo changed >> README.md
+  BUILDKITE_BUILD_ID= run "$PLUGIN_DIR/lib/verification.sh" "$verifier" "$policy"
+  [ "$status" -eq 1 ]
+  BUILDKITE_JOB_ID= run "$PLUGIN_DIR/lib/verification.sh" "$verifier" "$policy"
+  [ "$status" -eq 1 ]
+  [ ! -e "$BATS_TEST_TMPDIR/calls" ]
+}
+
+@test "backend failure remains a failure" {
+  touch "$BATS_TEST_TMPDIR/fail"
   run "$PLUGIN_DIR/lib/verification.sh" "$verifier" "$policy"
-  [ "$status" -eq 1 ]
-  [ ! -e "$FIXTURE_LOG" ]
-}
-
-@test "propagates verifier failure without uploading" {
-  FIXTURE_RUN_STATUS=23 run "$PLUGIN_DIR/lib/verification.sh" "$verifier" "$policy"
   [ "$status" -eq 23 ]
-  [ ! -e "$FIXTURE_RECEIPT" ]
 }
 
-@test "does not treat failed checkout inspection as a clean checkout" {
-  export FIXTURE_GIT="$(command -v git)"
-  cat > "$BATS_TEST_TMPDIR/bin/git" <<'SH'
-#!/usr/bin/env bash
-[[ "$1" != status ]] || exit 17
-exec "$FIXTURE_GIT" "$@"
-SH
-  chmod +x "$BATS_TEST_TMPDIR/bin/git"
-  run "$PLUGIN_DIR/lib/verification.sh" "$verifier" "$policy"
-  [ "$status" -eq 17 ]
-  [ ! -e "$FIXTURE_LOG" ]
+@test "request does not inherit job credentials git configuration or candidate PATH" {
+  BUILDKITE_AGENT_ACCESS_TOKEN=fixture AWS_SECRET_ACCESS_KEY=fixture GIT_CONFIG_COUNT=1 \
+    run "$PLUGIN_DIR/lib/verification.sh" "$verifier" "$policy"
+  [ "$status" -eq 0 ]
 }
 
-@test "rejects successful execution without evidence" {
-  FIXTURE_NO_RECEIPT=1 run "$PLUGIN_DIR/lib/verification.sh" "$verifier" "$policy"
-  [ "$status" -eq 1 ]
-  [ ! -e "$FIXTURE_RECEIPT" ]
-}
-
-@test "propagates rejected receipt and artifact upload failures" {
-  FIXTURE_VALIDATE_STATUS=24 run "$PLUGIN_DIR/lib/verification.sh" "$verifier" "$policy"
-  [ "$status" -eq 24 ]
-  [ ! -e "$FIXTURE_RECEIPT" ]
-  FIXTURE_UPLOAD_STATUS=25 run "$PLUGIN_DIR/lib/verification.sh" "$verifier" "$policy"
-  [ "$status" -eq 25 ]
-}
-
-@test "production check ignores candidate verifier and policy path overrides" {
+@test "production adapter passes only fixed worker paths" {
   mkdir -p "$BATS_TEST_TMPDIR/plugin/checks" "$BATS_TEST_TMPDIR/plugin/lib"
   cp "$PLUGIN_DIR/checks/verification.sh" "$BATS_TEST_TMPDIR/plugin/checks/"
   printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$@"\n' > "$BATS_TEST_TMPDIR/plugin/lib/verification.sh"
   chmod +x "$BATS_TEST_TMPDIR/plugin/lib/verification.sh"
-  BUILDKITE_VERIFICATION_EXECUTABLE="$verifier" BUILDKITE_VERIFICATION_POLICY="$policy" \
-    run "$BATS_TEST_TMPDIR/plugin/checks/verification.sh"
+  run "$BATS_TEST_TMPDIR/plugin/checks/verification.sh"
   [ "$status" -eq 0 ]
   [ "$output" = $'/opt/buildkite-verification/bin/verifier\n/etc/buildkite-verification/policy.sha256' ]
 }
