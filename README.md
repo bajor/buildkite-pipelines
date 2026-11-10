@@ -66,7 +66,8 @@ NVIDIA GPU. The original `python-ml` pipeline remains for Apple Silicon.
 Buildkite hosted Linux agents have no GPU, so the NVIDIA pipeline checks the
 dependency lock, lint, tests, and repository policy, not CUDA execution.
 
-The steps have no dependencies on each other, so they run in parallel.
+Python ML steps have no dependencies and run in parallel. Verification requests
+wait for repository hygiene and secret scanning to pass.
 Python ML steps use the default queue. The verification job requires a separately
 provisioned `trusted-verification` queue.
 
@@ -85,14 +86,16 @@ be resolved by the trusted scheduler before dispatch. Local `run-local
 verification` requires this provisioned backend and job context; ordinary local
 product checks remain consumer-specific commands.
 
-Proposed protocol 2, not an available integration:
+Proposed protocol 2 replaces the unreleased receipt-handling draft (protocol 1).
+No backend version is installed, and no protocol-1 compatibility is required:
 
 `verifier request-and-wait --protocol-version 2 --candidate-revision SHA
 --policy-sha256 DIGEST --build-id ID --job-id ID`
 
 All arguments are untrusted request hints. The adapter clears inherited job
-credentials, Git configuration and PATH before invoking the fixed entrypoint.
-It does not inspect Git, execute candidate tests, validate receipts or upload
+credentials, Git environment variables and PATH before invoking the fixed entrypoint.
+It starts outside the candidate checkout. It does not inspect Git, execute
+candidate tests, validate receipts or upload
 artifacts. The backend must independently authenticate repository, pipeline,
 build/job/attempt and exact candidate/base revisions through a protected control
 plane. It must reject mismatches, missing gates, stale results and unsupported
@@ -270,7 +273,13 @@ CI setup, the hook prints a message and the push continues.
 A push that only deletes branches or tags skips the checks too. Running
 `install-pre-push-hook` again updates an installed hook to the current version.
 
-Consumer repositories wrap this in `scripts/ci-local.sh`, which reads the plugin
+For `verification`, do not install the full pipeline as a local pre-push hook:
+it requires remote build/job identity and a provisioned backend. A local wrapper
+may run the existing `checks/repo-hygiene.sh` and `checks/secrets.sh` as preflight
+checks, clearly reporting that remote verification remains unexecuted. Local
+preflight is not the required CI result and cannot authorize admission.
+
+For the Python ML templates, consumer repositories use `scripts/ci-local.sh`, which reads the plugin
 version and pipeline name from `.buildkite/pipeline.yml` so local and remote CI
 run the same checks.
 

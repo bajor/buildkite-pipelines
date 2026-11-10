@@ -13,7 +13,8 @@ Consumers pin a tag in `.buildkite/pipeline.yml`.
   exact candidate/build/job hints, a cleared child environment and propagated
   failures. The protected backend, source snapshots, authenticated evidence and
   merge gate remain prerequisites; no candidate-checkout trust is claimed.
-  Existing Python ML pipelines are unchanged.
+  Request children start outside candidate checkouts; ambiguous executable paths
+  are rejected. Existing Python ML pipelines are unchanged.
 
 ## [1.4.0] - 2026-11-06
 

@@ -13,7 +13,7 @@ set -euo pipefail
 fixture_dir="$(cd "$(dirname "$0")" && pwd)"
 printf '%s\n' "$*" >> "$fixture_dir/calls"
 [[ -z "${BUILDKITE_AGENT_ACCESS_TOKEN+x}${AWS_SECRET_ACCESS_KEY+x}${GIT_CONFIG_COUNT+x}" ]] || exit 31
-[[ "$PATH" == /usr/bin:/bin ]] || exit 32
+[[ "$PATH" == /usr/bin:/bin && "$PWD" == / ]] || exit 32
 [[ ! -f "$fixture_dir/fail" ]] || exit 23
 SH
   chmod +x "$verifier"
@@ -66,4 +66,14 @@ SH
   run "$BATS_TEST_TMPDIR/plugin/checks/verification.sh"
   [ "$status" -eq 0 ]
   [ "$output" = $'/opt/buildkite-verification/bin/verifier\n/etc/buildkite-verification/policy.sha256' ]
+}
+
+@test "accepts a full SHA-256 candidate hint and rejects ambiguous executable paths" {
+  BUILDKITE_COMMIT=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
+    run "$PLUGIN_DIR/lib/verification.sh" "$verifier" "$policy"
+  [ "$status" -eq 0 ]
+  run "$PLUGIN_DIR/lib/verification.sh" verifier "$policy"
+  [ "$status" -eq 1 ]
+  run "$PLUGIN_DIR/lib/verification.sh" /tmp/a=b/verifier "$policy"
+  [ "$status" -eq 1 ]
 }
