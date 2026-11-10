@@ -59,21 +59,78 @@ requires authentication even for public repositories.
 |-------------|--------------------------------------------------------------------|
 | `python-ml` | `repo-hygiene`, `secrets`, `python`, `apple-silicon`, `make-test`, `changelog` |
 | `python-ml-nvidia` | `repo-hygiene`, `secrets`, `python`, `linux-nvidia`, `make-test`, `changelog` |
+| `verification` | `repo-hygiene`, `secrets`, worker-owned `verification` |
 
 Use `pipeline: python-ml-nvidia` for Linux x86-64 repositories that use an
 NVIDIA GPU. The original `python-ml` pipeline remains for Apple Silicon.
 Buildkite hosted Linux agents have no GPU, so the NVIDIA pipeline checks the
 dependency lock, lint, tests, and repository policy, not CUDA execution.
 
-The steps have no dependencies on each other, so they run in parallel on
-separate agents of the default queue.
+Python ML steps have no dependencies and run in parallel. Verification requests
+wait for repository hygiene and secret scanning to pass.
+Python ML steps use the default queue. The verification job requires a separately
+provisioned `trusted-verification` queue.
+
+### Verification orchestration (infrastructure prerequisite)
+
+Select `pipeline: verification` at an approved immutable plugin commit. The
+existing Python ML pipelines remain unchanged. This template reuses hygiene and
+secret checks, then requests verification from a future worker-owned backend.
+It implements no product checks, source materialization, receipts or merge gate.
+
+The request adapter requires `/opt/buildkite-verification/bin/verifier` and
+`/etc/buildkite-verification/policy.sha256` (one lowercase SHA-256 digest).
+Missing paths, invalid pins, absent build/job identity, non-full commit IDs and
+backend failures return nonzero. `HEAD`, short SHAs and implicit merge refs must
+be resolved by the trusted scheduler before dispatch. Local `run-local
+verification` requires this provisioned backend and job context; ordinary local
+product checks remain consumer-specific commands.
+
+Proposed protocol 2 replaces the unreleased receipt-handling draft (protocol 1).
+No backend version is installed, and no protocol-1 compatibility is required:
+
+`verifier request-and-wait --protocol-version 2 --candidate-revision SHA
+--policy-sha256 DIGEST --build-id ID --job-id ID`
+
+All arguments are untrusted request hints. The adapter clears inherited job
+credentials, Git environment variables and PATH before invoking the fixed entrypoint.
+It starts outside the candidate checkout. It does not inspect Git, execute
+candidate tests, validate receipts or upload
+artifacts. The backend must independently authenticate repository, pipeline,
+build/job/attempt and exact candidate/base revisions through a protected control
+plane. It must reject mismatches, missing gates, stale results and unsupported
+protocols, and obtain a fresh private source snapshot rather than trust the
+candidate checkout, its Git configuration, ignored files or hooks.
+
+The backend runs tests without verifier credentials, retains failure artifacts,
+and publishes authenticated evidence from a separate authority. It returns zero
+only after the required checks and evidence complete. The required merge gate
+must independently verify that evidence and the approved job origin. A green
+plugin step, its label, queue name or candidate-uploaded artifact is never merge
+authorization. The test doubles establish request/failure propagation only.
+
+Before production use, a separate infrastructure change must demonstrate protected
+worker binaries/policies and parent directories, isolated disposable jobs,
+credential separation, authenticated exact-source evidence and host admission.
+Candidate-selected plugins, repository hooks and environment changes cannot be
+trusted to enforce these controls. Use agent-level pre-bootstrap policy and
+approved plugin/command pins; evaluate self-hosted signed pipelines where
+supported. These protections are not implemented by this template. See
+[Buildkite security](https://buildkite.com/docs/agent/self-hosted/security) and
+[signed pipeline limits](https://buildkite.com/docs/agent/self-hosted/security/signed-pipelines).
+
+A missing queue can leave a job waiting before its runtime timeout begins. The
+future scheduler must enforce a queue/start deadline and fail admission on
+missing/expired jobs. No Buildkite worker execution is established by local tests.
+Consumer repositories keep application-specific scenarios and feature maps local;
+shared pipeline/check implementations remain here and are referenced by pin.
 
 ## Buildkite settings
 
-The pipelines target Buildkite hosted Linux agents. GitHub Actions in this
-repository only tests the plugin itself; consumer CI runs on Buildkite.
+The Python ML pipelines target Buildkite hosted Linux agents. GitHub Actions in
+this repository tests the plugin itself; consumer CI runs on Buildkite.
 
-Each template sets, for every step:
+Each Python ML template sets, for every step:
 
 | Setting | Value | Why |
 |---------|-------|-----|
@@ -216,7 +273,13 @@ CI setup, the hook prints a message and the push continues.
 A push that only deletes branches or tags skips the checks too. Running
 `install-pre-push-hook` again updates an installed hook to the current version.
 
-Consumer repositories wrap this in `scripts/ci-local.sh`, which reads the plugin
+For `verification`, do not install the full pipeline as a local pre-push hook:
+it requires remote build/job identity and a provisioned backend. A local wrapper
+may run the existing `checks/repo-hygiene.sh` and `checks/secrets.sh` as preflight
+checks, clearly reporting that remote verification remains unexecuted. Local
+preflight is not the required CI result and cannot authorize admission.
+
+For the Python ML templates, consumer repositories use `scripts/ci-local.sh`, which reads the plugin
 version and pipeline name from `.buildkite/pipeline.yml` so local and remote CI
 run the same checks.
 

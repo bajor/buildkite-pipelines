@@ -5,6 +5,17 @@ first, in the form `## [X.Y.Z] - YYYY-MM-DD`. Merging it to `main` tags
 `vX.Y.Z` and publishes a GitHub release with that section as the notes.
 Consumers pin a tag in `.buildkite/pipeline.yml`.
 
+## [1.5.0] - 2026-11-09
+
+### Added
+
+- Reusable `verification` request template with fixed backend paths, protocol 2,
+  exact candidate/build/job hints, a cleared child environment and propagated
+  failures. The protected backend, source snapshots, authenticated evidence and
+  merge gate remain prerequisites; no candidate-checkout trust is claimed.
+  Request children start outside candidate checkouts; ambiguous executable paths
+  are rejected. Existing Python ML pipelines are unchanged.
+
 ## [1.4.0] - 2026-11-06
 
 ### Added

@@ -1,0 +1,36 @@
+steps:
+  - label: ":broom: Repository hygiene"
+    key: repo-hygiene
+    retry:
+      automatic:
+        - exit_status: -1
+          limit: 2
+    timeout_in_minutes: 15
+    plugins:
+      - "__PLUGIN__":
+          check: repo-hygiene
+
+  - label: ":lock: Secrets in git history"
+    key: secrets
+    retry:
+      automatic:
+        - exit_status: -1
+          limit: 2
+    timeout_in_minutes: 15
+    plugins:
+      - "__PLUGIN__":
+          check: secrets
+
+  - label: ":shield: Verification request (backend required)"
+    key: verification
+    depends_on: [repo-hygiene, secrets]
+    agents:
+      queue: trusted-verification
+    retry:
+      automatic:
+        - exit_status: -1
+          limit: 2
+    timeout_in_minutes: 30
+    plugins:
+      - "__PLUGIN__":
+          check: verification
