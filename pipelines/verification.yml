@@ -1,0 +1,23 @@
+steps:
+  - label: ":broom: Repository hygiene"
+    key: repo-hygiene
+    timeout_in_minutes: 15
+    plugins:
+      - "__PLUGIN__":
+          check: repo-hygiene
+
+  - label: ":lock: Secrets in git history"
+    key: secrets
+    timeout_in_minutes: 15
+    plugins:
+      - "__PLUGIN__":
+          check: secrets
+
+  - label: ":shield: Trusted verification"
+    key: verification
+    agents:
+      queue: trusted-verification
+    timeout_in_minutes: 30
+    plugins:
+      - "__PLUGIN__":
+          check: verification

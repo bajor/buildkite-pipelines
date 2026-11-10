@@ -59,21 +59,64 @@ requires authentication even for public repositories.
 |-------------|--------------------------------------------------------------------|
 | `python-ml` | `repo-hygiene`, `secrets`, `python`, `apple-silicon`, `make-test`, `changelog` |
 | `python-ml-nvidia` | `repo-hygiene`, `secrets`, `python`, `linux-nvidia`, `make-test`, `changelog` |
+| `verification` | `repo-hygiene`, `secrets`, worker-owned `verification` |
 
 Use `pipeline: python-ml-nvidia` for Linux x86-64 repositories that use an
 NVIDIA GPU. The original `python-ml` pipeline remains for Apple Silicon.
 Buildkite hosted Linux agents have no GPU, so the NVIDIA pipeline checks the
 dependency lock, lint, tests, and repository policy, not CUDA execution.
 
-The steps have no dependencies on each other, so they run in parallel on
-separate agents of the default queue.
+The steps have no dependencies on each other, so they run in parallel.
+Python ML steps use the default queue. The verification job requires a separately
+provisioned `trusted-verification` queue.
+
+### Verification orchestration (infrastructure prerequisite)
+
+Select `pipeline: verification` at an approved immutable plugin commit. Existing
+Python ML pipelines remain unchanged. This template reuses hygiene and secret
+checks and dispatches verification through a fixed worker entrypoint. It does not
+implement architecture, purity, property, mutation, native or performance checks.
+
+The worker must provide `/opt/buildkite-verification/bin/verifier` and
+`/etc/buildkite-verification/policy.sha256`, protected from candidate writes.
+The policy file contains one lowercase SHA-256 digest. Missing prerequisites,
+dirty checkouts, a mismatch between `BUILDKITE_COMMIT` and HEAD, missing receipts,
+rejected receipts and failed artifact uploads fail the check.
+
+The following is a **proposed protocol**, not an available verifier integration:
+
+1. `verifier run --protocol-version 1 --source-root PATH --revision SHA
+   --policy-sha256 DIGEST --evidence-dir PATH` executes every gate required by the
+   externally approved repository policy and writes `receipt.json`.
+2. `verifier validate-receipt --protocol-version 1 --receipt PATH --revision SHA
+   --policy-sha256 DIGEST --require-pass` rejects incompatible protocols, stale
+   revisions, wrong policies, missing gates, invalid evidence and nonpassing runs.
+3. Only a validated receipt is uploaded. Detailed evidence and failure artifacts
+   must be retained by the verifier's protected evidence service, linked by the
+   receipt. Do not put user content or secrets in public CI artifacts.
+
+Provisioning that verifier, attestation validation and trusted merge authorization
+remain separate infrastructure work. Shared verifier modules belong in this
+repository; workers install an approved immutable release. The worker must authenticate
+job/repository identity, rebuild from trusted source snapshots, and validate
+requirements and evidence. Environment values and candidate-generated files alone
+are not trusted proof. Bootstrap must prevent candidate hooks, environment changes
+or pipeline edits from replacing this job or accessing its verification authority.
+
+Consumer repositories own application-specific verification scenarios and feature
+maps. They select approved shared modules by pinned policy/configuration; they do
+not copy job definitions or provide verifier executables. Repository-local code
+may request additional tests but cannot remove required policy gates. The Bats
+test doubles prove orchestration and failure propagation only, not verifier
+correctness, worker isolation or Apple-tool availability. No production verifier,
+Buildkite execution or macOS verification is established by these tests.
 
 ## Buildkite settings
 
-The pipelines target Buildkite hosted Linux agents. GitHub Actions in this
-repository only tests the plugin itself; consumer CI runs on Buildkite.
+The Python ML pipelines target Buildkite hosted Linux agents. GitHub Actions in
+this repository tests the plugin itself; consumer CI runs on Buildkite.
 
-Each template sets, for every step:
+Each Python ML template sets, for every step:
 
 | Setting | Value | Why |
 |---------|-------|-----|
